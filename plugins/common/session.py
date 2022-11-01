@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class SetNickCommand(BaseCommand):
+class InitSessionCommand(BaseCommand):
 
     action = 'set_nick'
 
@@ -38,7 +38,7 @@ class SetNickCommand(BaseCommand):
                     'to_user': self.message_json.get('nick'),
                 },
                 ignore_user=self.message_json.get('nick'),
-            )  # Customized return body to the user is sent, so we ignore it.
+            )
             self.user = self.message_json.get('nick')
         return {'user': self.user, 'room':self.room}
 

@@ -42,13 +42,12 @@ class Chat:
             # Inform everyone that user has joined
             for ws in request.app['websockets'][room].values():
                 await ws.send_json({'action': 'join', 'user': user, 'room': room})
-        # Send out messages whenever they are received
+
 
         try:
-            async for message in current_websocket:  # for each message in the websocket connection
+            async for message in current_websocket:
                 if isinstance(message, WSMessage):
-                    if message.type == web.WSMsgType.text:  # If it's a text, process it as a message
-                        # Parse incoming data
+                    if message.type == web.WSMsgType.text:
                         message_json = message.json()
                         action = message_json.get('action')
                         if action not in COMMANDS_LIST:
@@ -61,15 +60,15 @@ class Chat:
                         user = data['user']
                         room = data['room']
         finally:
-            # When a connection is stopped, remove the connection
+
             request.app['websockets'][room].pop(user)
         if current_websocket.closed:
-            # This only happens if a close signal is received.
+
             await broadcast(
                 app=request.app, room=room, message={'action': 'left', 'room': room, 'user': user, 'shame': False}
             )
         else:
-            # Abrupt disconnect without close signal (e.g. `ctrl`+`c`)
+
             await broadcast(
                 app=request.app, room=room, message={'action': 'left', 'room': room, 'user': user, 'shame': True}
             )
@@ -77,10 +76,7 @@ class Chat:
 
 
 async def init_app() -> web.Application:
-    """
-    Creates an backend app object with a 'websockets' dict on it, where we can store open websocket connections.
-    :return: The app
-    """
+
     app = web.Application()
     app['websockets'] = defaultdict(dict)
 

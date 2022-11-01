@@ -42,13 +42,15 @@ class Client:
 
 
     async def handler(self, nick: str = None, room: str = None) -> None:
-
+        if not room:
+            room = 'Default'
         async with ClientSession() as session:
             async with session.ws_connect('ws://127.0.0.1:8080/chat', ssl=False) as ws:
                 read_message_task = asyncio.create_task(self.subscribe_to_messages(websocket=ws))
                 # Change nick to `Jonas` and change room to `test`
-                await ws.send_json({'action': 'join_room', 'room': room})
                 await ws.send_json({'action': 'set_nick', 'nick': nick})
+                await ws.send_json({'action': 'join_room', 'room': room})
+
 
                 ping_task = asyncio.create_task(ping(websocket=ws))
                 send_input_message_task = asyncio.create_task(self.send_input_message(websocket=ws))
