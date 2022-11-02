@@ -29,7 +29,6 @@ class Client:
                         print(f'>>>{message_json["user"]}: {message_json["message"]}')
                     logger.info('> Message from server received: %s', message_json)
 
-
     async def send_input_message(self, websocket: ClientWebSocketResponse) -> None:
 
         while True:
@@ -39,7 +38,6 @@ class Client:
             else:
                 logger.info('\n< Sending message: %s', message)
                 await websocket.send_json({'action': 'chat_message', 'message': message})
-
 
     async def handler(self, nick: str = None, room: str = None) -> None:
         if not room:
@@ -51,12 +49,10 @@ class Client:
                 await ws.send_json({'action': 'set_nick', 'nick': nick})
                 await ws.send_json({'action': 'join_room', 'room': room})
 
-
                 ping_task = asyncio.create_task(ping(websocket=ws))
                 send_input_message_task = asyncio.create_task(self.send_input_message(websocket=ws))
 
                 await ws.send_json({'action': 'user_list', 'room': 'test'})
-
 
                 done, pending = await asyncio.wait(
                     [read_message_task, ping_task, send_input_message_task], return_when=asyncio.FIRST_COMPLETED,
