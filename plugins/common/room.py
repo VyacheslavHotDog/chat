@@ -2,61 +2,47 @@ from plugins.common.base import BaseCommand
 import logging
 from typing import Dict,  Tuple, Union
 from aiohttp import web
-
-from utils import broadcast
-
+from plugins.common.handle_error import HandleErrorCommand
+from plugins.common.output import LeftRoomOutputCommand, JoinRoomCommand
+from plugins.models import Room
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-
-class JoinRoomCommand(BaseCommand):
+class ChangeRoomCommand(BaseCommand):
 
     action = 'join_room'
 
-    async def command (self):
-        return_body, success = await self.change_room(
-            app=self.request.app, new_room=self.message_json.get('room'), old_room=self.room, nick=self.user
+    async def command(self):
+        rooms, success = await self.change_room(
+            rooms=self.rooms, new_room=self.message_json.get('room'), nick=self.jwt_token
         )
-        if not success:
-            logger.info(
-                '%s: Unable to change room for %s to %s, reason: %s',
-                self.room,
-                self.user,
-                self.message_json.get('room'),
-                return_body['message'],
-            )
-            await self.current_websocket.send_json(return_body)
-        else:
-            logger.info('%s: User %s joined the room', self.user, self.message_json.get('room'))
-            await broadcast(
-                app=self.request.app,
-                room=self.room,
-                message={'action': 'left', 'room': self.room, 'user': self.user, 'shame': False},
-            )
-            await broadcast(
-                app=self.request.app,
-                room=self.message_json.get('room'),
-                message={'action': 'joined', 'room': self.room, 'user': self.user},
-                ignore_user=self.user,
-            )
+        if success:
+            self.rooms = rooms
+            logger.info('\n rooms %s \n', self.rooms)
+            await JoinRoomCommand(self.message_json.get('room'), self.rooms, self.user, self.jwt_token).command()
             self.room = self.message_json.get('room')
-        return {'user': self.user, 'room':self.room}
+        return {'user': self.user, 'room': self.room, 'rooms':self.rooms}
 
     async def change_room(self,
-            app: web.Application, new_room: str, old_room: str, nick: str
+            rooms, new_room: str, nick: str
     ) -> Tuple[Dict[str, Union[str, bool]], bool]:
 
         if not isinstance(new_room, str) or not 3 <= len(new_room) <= 20:
-            return (
-                {'action': 'join_room', 'success': False,
-                 'message': 'Room name must be a string and between 3-20 chars.'},
-                False,
-            )
-        if nick in app['websockets'][new_room].keys():
-            return (
-                {'action': 'join_room', 'success': False, 'message': 'Name already in use in this room.'},
-                False,
-            )
-        app['websockets'][new_room][nick] = app['websockets'][old_room].pop(nick)
-        return {'action': 'join_room', 'success': True, 'message': ''}, True
+            return HandleErrorCommand(self.action, 'Room name must be a string and between 3-20 chars.').execute()
+        if new_room not in rooms:
+            rooms[new_room] = Room(new_room)
+        rooms[new_room].users[nick] = self.current_websocket
+        return rooms, True
+
+
+class LeftRoomCommand(BaseCommand):
+
+    action = 'left'
+
+    async def command(self):
+        self.room = self.message_json.get('room')
+        if self.jwt_token in self.rooms[self.room].users:
+            self.rooms[self.room].users.pop(self.jwt_token)
+            await LeftRoomOutputCommand(self.room, self.rooms, self.user, self.jwt_token).command()
+        return {'user': self.user, 'room': self.room, 'rooms': self.rooms}

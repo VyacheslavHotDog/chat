@@ -1,6 +1,5 @@
 
 import logging
-
 from settings import MIDDLEWARE
 
 logging.basicConfig(level=logging.INFO)
@@ -18,7 +17,6 @@ class BaseCommand:
         for middleware in MIDDLEWARE:
             middleware().postProcess(self)
 
-
     def command(self):
         pass
 
@@ -28,11 +26,13 @@ class BaseCommand:
         self.postrocess_middleware()
         return res
 
-    def __init__(self, request, room, message_json, user, current_websocket):
-        self.request = request
-        self.room = room
+    def __init__(self, user_session, message_json):
+        self.rooms = user_session.rooms
+        self.room = message_json.get('room', None)
         self.message_json = message_json
-        self.user = user
-        self.current_websocket = current_websocket
-        logger.info(self.__class__.__name__)
+        self.user = user_session.name
+        self.current_websocket = user_session.session
+        self.jwt_token = user_session.jwt_token
+
+
 

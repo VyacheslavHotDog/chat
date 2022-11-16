@@ -1,7 +1,6 @@
 from plugins.common.base import BaseCommand
+from plugins.common.output import ChatCommand
 import logging
-
-from utils import broadcast
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -12,15 +11,7 @@ class ChatMessageCommand(BaseCommand):
     action = 'chat_message'
 
     async def command(self):
-        logger.info('%s: Message: %s', self.room, self.message_json.get('message'))
-        await self.current_websocket.send_json(
-            {'action': 'chat_message', 'success': True, 'message': self.message_json.get('message')}
-        )
-        await broadcast(
-            app=self.request.app,
-            room=self.room,
-            message={'action': 'chat_message', 'message': self.message_json.get('message'), 'user': self.user},
-            ignore_user=self.user,
-        )
-        return {'user': self.user, 'room':self.room}
+        msg = self.message_json.get('message')
+        message = await ChatCommand(self.room, self.rooms, self.user, self.jwt_token, msg).command()
+        return {'user': self.user, 'room': self.room, 'message': message}
 
